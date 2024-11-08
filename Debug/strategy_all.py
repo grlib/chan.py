@@ -23,7 +23,7 @@ def is_within_days(dt, days=10):
     # 检查差异是否不超过两天
     return abs(delta.days) <= days
 
-def calc_bsp_list(code):
+def calc_bsp_list(code, i, total):
     begin_time = "2024-01-01"
     end_time = None
     lv_list = [KL_TYPE.K_DAY]
@@ -52,7 +52,7 @@ def calc_bsp_list(code):
     if not last_bsp.is_buy:
         return
 
-    logger.info(f"code={code},last_bsp.type={last_bsp.type},last_bsp.klu.time.toDateTime()={last_bsp.klu.time.toDateTime()}")
+    logger.info(f"[{i}/{total}]code={code},last_bsp.type={last_bsp.type},last_bsp.klu.time.toDateTime()={last_bsp.klu.time.toDateTime()}")
     if is_within_days(last_bsp.klu.time.toDateTime()):
         logger.info('--------------------------------')
 if __name__ == "__main__":
@@ -65,9 +65,8 @@ if __name__ == "__main__":
     for stock in stocks:
         code = stock['code']
         i += 1
-        logger.info(f'({i}/{total}) {code}')
         try:
-            calc_bsp_list(code)
+            calc_bsp_list(code, i, total)
         except:
             pass
         
