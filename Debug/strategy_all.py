@@ -3,6 +3,7 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+import pandas as pd
 from Chan import CChan
 from ChanConfig import CChanConfig
 from Common.CEnum import AUTYPE, BSP_TYPE, DATA_SRC, FX_TYPE, KL_TYPE
@@ -51,10 +52,20 @@ def calc_bsp_list(code, i, total):
     
     if not last_bsp.is_buy:
         return
+    
+    last_klu = last_bsp.klu
+    data = {
+        'code': code,
+        'bsp_type' : last_bsp.type,
+        'bsp_time': last_klu.time.toDateTime(),
+        'bsp_close': last_klu.close,
+    }
+    
+    return data
 
     logger.info(f"[{i}/{total}]code={code},last_bsp.type={last_bsp.type},last_bsp.klu.time.toDateTime()={last_bsp.klu.time.toDateTime()}")
-    if is_within_days(last_bsp.klu.time.toDateTime()):
-        logger.info('--------------------------------')
+    
+    
 if __name__ == "__main__":
   
     data_src = MySQL_API('all')
@@ -62,11 +73,17 @@ if __name__ == "__main__":
     stocks = data_src.get_all_stocks()
     total = len(stocks)
     i = 0
+    
+    data_list = []
     for stock in stocks:
         code = stock['code']
         i += 1
         try:
-            calc_bsp_list(code, i, total)
+            data = calc_bsp_list(code, i, total)
+            data_list.append(data)
         except:
             pass
+        
+    df = pd.DataFrame(data_list)
+    df.to_csv('bsp_list.csv')
         
