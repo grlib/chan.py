@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -7,8 +8,11 @@ from ChanConfig import CChanConfig
 from Common.CEnum import AUTYPE, BSP_TYPE, DATA_SRC, FX_TYPE, KL_TYPE
 from DataAPI.MySqlAPI import MySQL_API
 
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-def is_within_days(dt, days=2):
+def is_within_days(dt, days=10):
     # 将输入的日期字符串转换为 datetime 对象
     # 获取当前日期
     current_date = datetime.now()
@@ -17,7 +21,7 @@ def is_within_days(dt, days=2):
     delta = current_date - dt
     
     # 检查差异是否不超过两天
-    return abs(delta.days) <= 2
+    return abs(delta.days) <= days
 
 def calc_bsp_list(code):
     begin_time = "2024-01-01"
@@ -49,7 +53,7 @@ def calc_bsp_list(code):
         return
 
     if is_within_days(last_bsp.klu.time.toDateTime()):
-        print(code, last_bsp.type, last_bsp.klu.time.toDateTime())
+        logger.info(f"code={code},last_bsp.type={last_bsp.type},last_bsp.klu.time.toDateTime()={last_bsp.klu.time.toDateTime()}")
     
 if __name__ == "__main__":
   
