@@ -1,3 +1,7 @@
+import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from Chan import CChan
 from ChanConfig import CChanConfig
 from Common.CEnum import AUTYPE, BSP_TYPE, DATA_SRC, FX_TYPE, KL_TYPE
@@ -8,10 +12,10 @@ if __name__ == "__main__":
     只用做展示如何自己实现策略，做回测用~
     """
     code = "sz.000001"
-    begin_time = "2021-01-01"
+    begin_time = "2024-01-01"
     end_time = None
     data_src = DATA_SRC.BAO_STOCK
-    lv_list = [KL_TYPE.K_DAY]
+    lv_list = [KL_TYPE.K_5M]
 
     config = CChanConfig({
         "trigger_step": True,  # 打开开关！

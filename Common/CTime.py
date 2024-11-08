@@ -30,6 +30,9 @@ class CTime:
     def toDate(self):
         return CTime(self.year, self.month, self.day, 0, 0, auto=False)
 
+    def toDateTime(self):
+        return datetime(self.year, self.month, self.day,self.hour, self.minute)
+    
     def set_timestamp(self):
         if self.hour == 0 and self.minute == 0 and self.auto:
             date = datetime(self.year, self.month, self.day, 23, 59, self.second)

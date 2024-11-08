@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     plot_para = {
         "seg": {
-            # "plot_trendline": True,
+            "plot_trendline": True,
         },
         "bi": {
             # "show_num": True,
@@ -72,12 +72,16 @@ if __name__ == "__main__":
         autype=AUTYPE.QFQ,
     )
 
+
+    print(chan)
     if not config.trigger_step:
         plot_driver = CPlotDriver(
             chan,
             plot_config=plot_config,
             plot_para=plot_para,
         )
+        
+        print('plot')
         plot_driver.figure.show()
     else:
         CAnimateDriver(
@@ -85,3 +89,5 @@ if __name__ == "__main__":
             plot_config=plot_config,
             plot_para=plot_para,
         )
+
+    input('wait')
