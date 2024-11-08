@@ -59,8 +59,14 @@ def calc_bsp_list(code):
 if __name__ == "__main__":
   
     data_src = MySQL_API('all')
-    for stock in data_src.get_all_codes():
+    
+    stocks = data_src.get_all_stocks()
+    total = len(stocks)
+    i = 0
+    for stock in stocks:
         code = stock['code']
+        i += 1
+        logger.info(f'({i}/{total}) {code}')
         try:
             calc_bsp_list(code)
         except:

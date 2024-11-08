@@ -51,16 +51,14 @@ class MySQL_API(CCommonStockApi):
         if self.db_connection:
             self.db_connection.close()
 
-    def get_all_codes(self):
+    def get_all_stocks(self):
         if self.db_connection is None:
             self.connect_to_db()
         try:
             query = f"SELECT * FROM core_stockmain"
             
             self.cursor.execute(query)
-            results = self.cursor.fetchall()
-            for row in results:
-                yield row
+            return  self.cursor.fetchall()
         except Error as e:
             raise CChanException(f"Error fetching data from MySQL: {e}", ErrCode.DB_QUERY_ERROR)
         finally:
