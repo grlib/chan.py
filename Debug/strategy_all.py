@@ -52,10 +52,9 @@ def calc_bsp_list(code):
     if not last_bsp.is_buy:
         return
 
-    logger.info(f'{code}')
+    logger.info(f"code={code},last_bsp.type={last_bsp.type},last_bsp.klu.time.toDateTime()={last_bsp.klu.time.toDateTime()}")
     if is_within_days(last_bsp.klu.time.toDateTime()):
-        logger.info(f"code={code},last_bsp.type={last_bsp.type},last_bsp.klu.time.toDateTime()={last_bsp.klu.time.toDateTime()}")
-    
+        logger.info('--------------------------------')
 if __name__ == "__main__":
   
     data_src = MySQL_API('all')
