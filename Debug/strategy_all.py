@@ -60,10 +60,10 @@ def calc_bsp_list(code, i, total):
         'bsp_time': last_klu.time.toDateTime(),
         'bsp_close': last_klu.close,
     }
+    logger.info(f"[{i}/{total}]code={code},last_bsp.type={last_bsp.type},last_bsp.klu.time.toDateTime()={last_bsp.klu.time.toDateTime()}")
     
     return data
 
-    logger.info(f"[{i}/{total}]code={code},last_bsp.type={last_bsp.type},last_bsp.klu.time.toDateTime()={last_bsp.klu.time.toDateTime()}")
     
     
 if __name__ == "__main__":
