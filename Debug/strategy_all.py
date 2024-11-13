@@ -56,6 +56,7 @@ def calc_bsp_list(code, i, total):
     last_klu = last_bsp.klu
     data = {
         'code': code,
+        'is_buy' : last_bsp.is_buy,
         'bsp_type' : last_bsp.type,
         'bsp_time': last_klu.time.toDateTime(),
         'bsp_close': last_klu.close,
