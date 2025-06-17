@@ -49,6 +49,7 @@ class CSeg_meta:
             self.end_y = seg.end_bi.end_bi.get_end_val()
         self.dir = seg.dir
         self.is_sure = seg.is_sure
+        self.idx = seg.idx
 
         self.tl = {}
         if seg.support_trend_line and seg.support_trend_line.line:
@@ -123,6 +124,7 @@ class CChanPlotMeta:
         self.klu_len = sum(len(klc.klu_list) for klc in self.klc_list)
 
         self.bi_list = [CBi_meta(bi) for bi in kl_list.bi_list]
+
         self.seg_list: List[CSeg_meta] = []
         self.eigenfx_lst: List[CEigenFX_meta] = []
         for seg in kl_list.seg_list:
@@ -130,12 +132,18 @@ class CChanPlotMeta:
             if seg.eigen_fx:
                 self.eigenfx_lst.append(CEigenFX_meta(seg.eigen_fx))
 
-        self.segseg_list: List[CSeg_meta] = [CSeg_meta(segseg) for segseg in kl_list.segseg_list]
+        self.seg_eigenfx_lst: List[CEigenFX_meta] = []
+        self.segseg_list: List[CSeg_meta] = []
+        for segseg in kl_list.segseg_list:
+            self.segseg_list.append(CSeg_meta(segseg))
+            if segseg.eigen_fx:
+                self.seg_eigenfx_lst.append(CEigenFX_meta(segseg.eigen_fx))
+
         self.zs_lst: List[CZS_meta] = [CZS_meta(zs) for zs in kl_list.zs_list]
         self.segzs_lst: List[CZS_meta] = [CZS_meta(segzs) for segzs in kl_list.segzs_list]
 
-        self.bs_point_lst: List[CBS_Point_meta] = [CBS_Point_meta(bs_point, is_seg=False) for bs_point in kl_list.bs_point_lst]
-        self.seg_bsp_lst: List[CBS_Point_meta] = [CBS_Point_meta(seg_bsp, is_seg=True) for seg_bsp in kl_list.seg_bs_point_lst]
+        self.bs_point_lst: List[CBS_Point_meta] = [CBS_Point_meta(bs_point, is_seg=False) for bs_point in kl_list.bs_point_lst.bsp_iter()]
+        self.seg_bsp_lst: List[CBS_Point_meta] = [CBS_Point_meta(seg_bsp, is_seg=True) for seg_bsp in kl_list.seg_bs_point_lst.bsp_iter()]
 
     def klu_iter(self):
         for klc in self.klc_list:

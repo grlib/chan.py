@@ -249,6 +249,8 @@ class CPlotDriver:
             self.draw_segseg(meta, ax, **plot_para.get('segseg', {}))
         if plot_config.get("plot_eigen", False):
             self.draw_eigen(meta, ax, **plot_para.get('eigen', {}))
+        if plot_config.get("plot_segeigen", False):
+            self.draw_segeigen(meta, ax, **plot_para.get('segeigen', {}))
         if plot_config.get("plot_zs", False):
             self.draw_zs(meta, ax, **plot_para.get('zs', {}))
         if plot_config.get("plot_segzs", False):
@@ -390,6 +392,9 @@ class CPlotDriver:
         plot_trendline=False,
         trendline_color='r',
         trendline_width=3,
+        show_num=False,
+        num_fontsize=25,
+        num_color="blue",
     ):
         x_begin = ax.get_xlim()[0]
 
@@ -409,6 +414,8 @@ class CPlotDriver:
                 if seg_meta.tl.get('resistance'):
                     tl_meta = seg_meta.format_tl(seg_meta.tl['resistance'])
                     ax.plot([tl_meta[0], tl_meta[2]], [tl_meta[1], tl_meta[3]], color=trendline_color, linewidth=trendline_width)
+            if show_num and seg_meta.begin_x >= x_begin:
+                ax.text((seg_meta.begin_x+seg_meta.end_x)/2, (seg_meta.begin_y+seg_meta.end_y)/2, f'{seg_meta.idx}', fontsize=num_fontsize, color=num_color)
         if sub_lv_cnt is not None and len(self.lv_lst) > 1 and lv != self.lv_lst[-1]:
             if sub_lv_cnt >= len(meta.seg_list):
                 return
@@ -427,6 +434,9 @@ class CPlotDriver:
         disp_end=False,
         end_color='brown',
         end_fontsize=15,
+        show_num=False,
+        num_fontsize=30,
+        num_color="blue",
     ):
         x_begin = ax.get_xlim()[0]
 
@@ -455,23 +465,35 @@ class CPlotDriver:
                     color=end_color,
                     verticalalignment="top" if seg_meta.dir == BI_DIR.DOWN else "bottom",
                     horizontalalignment='center')
+            if show_num and seg_meta.begin_x >= x_begin:
+                ax.text((seg_meta.begin_x+seg_meta.end_x)/2, (seg_meta.begin_y+seg_meta.end_y)/2, f'{seg_meta.idx}', fontsize=num_fontsize, color=num_color)
+
+    def plot_single_eigen(self, eigenfx_meta, ax, color_top, color_bottom, aplha, only_peak):
+        x_begin = ax.get_xlim()[0]
+        color = color_top if eigenfx_meta.fx == FX_TYPE.TOP else color_bottom
+        for idx, eigen_meta in enumerate(eigenfx_meta.ele):
+            if eigen_meta.begin_x+eigen_meta.w < x_begin:
+                continue
+            if only_peak and idx != 1:
+                continue
+            ax.add_patch(
+                Rectangle(
+                    (eigen_meta.begin_x, eigen_meta.begin_y),
+                    eigen_meta.w,
+                    eigen_meta.h,
+                    fill=True,
+                    alpha=aplha,
+                    color=color
+                )
+            )
 
     def draw_eigen(self, meta: CChanPlotMeta, ax: Axes, color_top="r", color_bottom="b", aplha=0.5, only_peak=False):
-        x_begin = ax.get_xlim()[0]
-
         for eigenfx_meta in meta.eigenfx_lst:
-            color = color_top if eigenfx_meta.fx == FX_TYPE.TOP else color_bottom
-            for idx, eigen_meta in enumerate(eigenfx_meta.ele):
-                if eigen_meta.begin_x+eigen_meta.w < x_begin:
-                    continue
-                if only_peak and idx != 1:
-                    continue
-                ax.add_patch(Rectangle((eigen_meta.begin_x, eigen_meta.begin_y),
-                             eigen_meta.w,
-                             eigen_meta.h,
-                             fill=True,
-                             alpha=aplha,
-                             color=color))
+            self.plot_single_eigen(eigenfx_meta, ax, color_top, color_bottom, aplha, only_peak)
+
+    def draw_segeigen(self, meta: CChanPlotMeta, ax: Axes, color_top="r", color_bottom="b", aplha=0.5, only_peak=False):
+        for eigenfx_meta in meta.seg_eigenfx_lst:
+            self.plot_single_eigen(eigenfx_meta, ax, color_top, color_bottom, aplha, only_peak)
 
     def draw_zs(
         self,
@@ -816,7 +838,7 @@ def bi_text(bi_idx, ax: Axes, bi, end_fontsize, end_color):
         ax.text(
             bi.begin_x,
             bi.begin_y,
-            f'{bi.begin_y:.2f}',
+            f'{bi.begin_y:.5f}',
             fontsize=end_fontsize,
             color=end_color,
             verticalalignment="top" if bi.dir == BI_DIR.UP else "bottom",
@@ -824,7 +846,7 @@ def bi_text(bi_idx, ax: Axes, bi, end_fontsize, end_color):
     ax.text(
         bi.end_x,
         bi.end_y,
-        f'{bi.end_y:.2f}',
+        f'{bi.end_y:.5f}',
         fontsize=end_fontsize,
         color=end_color,
         verticalalignment="top" if bi.dir == BI_DIR.DOWN else "bottom",

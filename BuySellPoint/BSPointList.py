@@ -1,4 +1,4 @@
-from typing import Dict, Generic, List, Optional, TypeVar, Union, overload
+from typing import Dict, Generic, Iterable, List, Optional, Tuple, TypeVar
 
 from Bi.Bi import CBi
 from Bi.BiList import CBiList
@@ -17,32 +17,89 @@ LINE_LIST_TYPE = TypeVar('LINE_LIST_TYPE', CBiList, CSegListComm[CBi])
 
 class CBSPointList(Generic[LINE_TYPE, LINE_LIST_TYPE]):
     def __init__(self, bs_point_config: CBSPointConfig):
-        self.lst: List[CBS_Point[LINE_TYPE]] = []
-        self.bsp_dict: Dict[int, CBS_Point[LINE_TYPE]] = {}
-        self.bsp1_lst: List[CBS_Point[LINE_TYPE]] = []
+        self.bsp_store_dict: Dict[BSP_TYPE, Tuple[List[CBS_Point[LINE_TYPE]], List[CBS_Point[LINE_TYPE]]]] = {}
+        self.bsp_store_flat_dict: Dict[int, CBS_Point[LINE_TYPE]] = {}
+
+        self.bsp1_list: List[CBS_Point[LINE_TYPE]] = []
+        self.bsp1_dict: Dict[int, CBS_Point[LINE_TYPE]] = {}
+
         self.config = bs_point_config
         self.last_sure_pos = -1
+        self.last_sure_seg_idx = 0
 
-    def __iter__(self):
-        yield from self.lst
+    def store_add_bsp(self, bsp_type: BSP_TYPE, bsp: CBS_Point[LINE_TYPE]):
+        if bsp_type not in self.bsp_store_dict:
+            self.bsp_store_dict[bsp_type] = ([], [])
+        if len(self.bsp_store_dict[bsp_type][bsp.is_buy]) > 0:
+            assert self.bsp_store_dict[bsp_type][bsp.is_buy][-1].bi.idx < bsp.bi.idx, f"{bsp_type}, {bsp.is_buy} {self.bsp_store_dict[bsp_type][bsp.is_buy][-1].bi.idx} {bsp.bi.idx}"
+        self.bsp_store_dict[bsp_type][bsp.is_buy].append(bsp)
+        self.bsp_store_flat_dict[bsp.bi.idx] = bsp
+
+    def add_bsp1(self, bsp: CBS_Point[LINE_TYPE]):
+        if len(self.bsp1_list) > 0:
+            assert self.bsp1_list[-1].bi.idx < bsp.bi.idx
+        self.bsp1_list.append(bsp)
+        self.bsp1_dict[bsp.bi.idx] = bsp
+
+    def clear_store_end(self):
+        for bsp_list in self.bsp_store_dict.values():
+            for is_buy in [True, False]:
+                while len(bsp_list[is_buy]) > 0:
+                    if bsp_list[is_buy][-1].bi.get_end_klu().idx <= self.last_sure_pos:
+                        break
+                    del self.bsp_store_flat_dict[bsp_list[is_buy][-1].bi.idx]
+                    # 同时把失效买卖点从Bi删除
+                    bsp_list[is_buy][-1].bi.bsp = None
+                    bsp_list[is_buy].pop()
+
+    def clear_bsp1_end(self):
+        while len(self.bsp1_list) > 0:
+            if self.bsp1_list[-1].bi.get_end_klu().idx <= self.last_sure_pos:
+                break
+            del self.bsp1_dict[self.bsp1_list[-1].bi.idx]
+            self.bsp1_list.pop()
+
+    def bsp_iter(self) -> Iterable[CBS_Point[LINE_TYPE]]:
+        for bsp_list in self.bsp_store_dict.values():
+            yield from bsp_list[True]
+            yield from bsp_list[False]
+
+    def bsp_iter_v2(self) -> Iterable[CBS_Point[LINE_TYPE]]:
+        list_indices = []
+        for bsp_type, bsp_list in self.bsp_store_dict.items():
+            if bsp_list[True]:
+                list_indices.append([bsp_type, True, len(bsp_list[True]) - 1])
+            if bsp_list[False]:
+                list_indices.append([bsp_type, False, len(bsp_list[False]) - 1])
+
+        while list_indices:
+            max_idx = -1
+            max_bi_idx = -1
+            max_bsp = None
+
+            for i, (bsp_type, is_buy, idx) in enumerate(list_indices):
+                if idx >= 0:
+                    bsp = self.bsp_store_dict[bsp_type][is_buy][idx]
+                    if bsp.bi.idx > max_bi_idx:
+                        max_bi_idx = bsp.bi.idx
+                        max_idx = i
+                        max_bsp = bsp
+
+            if max_bsp is None:
+                break
+
+            yield max_bsp
+
+            list_indices[max_idx][2] -= 1
+            if list_indices[max_idx][2] < 0:
+                list_indices.pop(max_idx)
 
     def __len__(self):
-        return len(self.lst)
-
-    @overload
-    def __getitem__(self, index: int) -> CBS_Point: ...
-
-    @overload
-    def __getitem__(self, index: slice) -> List[CBS_Point]: ...
-
-    def __getitem__(self, index: Union[slice, int]) -> Union[List[CBS_Point], CBS_Point]:
-        return self.lst[index]
+        return len(self.bsp_store_flat_dict)
 
     def cal(self, bi_list: LINE_LIST_TYPE, seg_list: CSegListComm[LINE_TYPE]):
-        self.lst = [bsp for bsp in self.lst if bsp.klu.idx <= self.last_sure_pos]
-        self.bsp_dict = {bsp.bi.get_end_klu().idx: bsp for bsp in self.lst}
-        self.bsp1_lst = [bsp for bsp in self.bsp1_lst if bsp.klu.idx <= self.last_sure_pos]
-
+        self.clear_store_end()
+        self.clear_bsp1_end()
         self.cal_seg_bs1point(seg_list, bi_list)
         self.cal_seg_bs2point(seg_list, bi_list)
         self.cal_seg_bs3point(seg_list, bi_list)
@@ -51,10 +108,15 @@ class CBSPointList(Generic[LINE_TYPE, LINE_LIST_TYPE]):
 
     def update_last_pos(self, seg_list: CSegListComm):
         self.last_sure_pos = -1
-        for seg in seg_list[::-1]:
+        self.last_sure_seg_idx = 0
+        seg_idx = len(seg_list)-1
+        while seg_idx >= 0:
+            seg = seg_list[seg_idx]
             if seg.is_sure:
                 self.last_sure_pos = seg.end_bi.get_begin_klu().idx
+                self.last_sure_seg_idx = seg.idx
                 return
+            seg_idx -= 1
 
     def seg_need_cal(self, seg: CSeg):
         return seg.end_bi.get_end_klu().idx > self.last_sure_pos
@@ -68,7 +130,7 @@ class CBSPointList(Generic[LINE_TYPE, LINE_LIST_TYPE]):
         feature_dict=None,
     ):
         is_buy = bi.is_down()
-        if exist_bsp := self.bsp_dict.get(bi.get_end_klu().idx):
+        if exist_bsp := self.bsp_store_flat_dict.get(bi.idx):
             assert exist_bsp.is_buy == is_buy
             exist_bsp.add_another_bsp_prop(bs_type, relate_bsp1)
             return
@@ -86,13 +148,14 @@ class CBSPointList(Generic[LINE_TYPE, LINE_LIST_TYPE]):
         else:
             return
         if is_target_bsp:
-            self.lst.append(bsp)
-            self.bsp_dict[bi.get_end_klu().idx] = bsp
+            self.store_add_bsp(bs_type, bsp)
+        else:
+            bsp.bi.bsp = None
         if bs_type in [BSP_TYPE.T1, BSP_TYPE.T1P]:
-            self.bsp1_lst.append(bsp)
+            self.add_bsp1(bsp)
 
     def cal_seg_bs1point(self, seg_list: CSegListComm[LINE_TYPE], bi_list: LINE_LIST_TYPE):
-        for seg in seg_list:
+        for seg in seg_list[self.last_sure_seg_idx:]:
             if not self.seg_need_cal(seg):
                 continue
             self.cal_single_bs1point(seg, bi_list)
@@ -142,21 +205,19 @@ class CBSPointList(Generic[LINE_TYPE, LINE_LIST_TYPE]):
         self.add_bs(bs_type=BSP_TYPE.T1P, bi=last_bi, relate_bsp1=None, is_target_bsp=is_target_bsp, feature_dict=feature_dict)
 
     def cal_seg_bs2point(self, seg_list: CSegListComm[LINE_TYPE], bi_list: LINE_LIST_TYPE):
-        bsp1_bi_idx_dict = {bsp.bi.idx: bsp for bsp in self.bsp1_lst}
-        for seg in seg_list:
+        for seg in seg_list[self.last_sure_seg_idx:]:
             config = self.config.GetBSConfig(seg.is_down())
             if BSP_TYPE.T2 not in config.target_types and BSP_TYPE.T2S not in config.target_types:
                 continue
-            self.treat_bsp2(seg, bsp1_bi_idx_dict, seg_list, bi_list)
+            if not self.seg_need_cal(seg):
+                continue
+            self.treat_bsp2(seg, seg_list, bi_list)
 
-    def treat_bsp2(self, seg: CSeg, bsp1_bi_idx_dict, seg_list: CSegListComm[LINE_TYPE], bi_list: LINE_LIST_TYPE):
-        if not self.seg_need_cal(seg):
-            return
+    def treat_bsp2(self, seg: CSeg, seg_list: CSegListComm[LINE_TYPE], bi_list: LINE_LIST_TYPE):
         if len(seg_list) > 1:
             BSP_CONF = self.config.GetBSConfig(seg.is_down())
             bsp1_bi = seg.end_bi
-            bsp1_bi_idx = bsp1_bi.idx
-            real_bsp1 = bsp1_bi_idx_dict.get(bsp1_bi.idx)
+            real_bsp1 = self.bsp1_dict.get(bsp1_bi.idx)
             if bsp1_bi.idx + 2 >= len(bi_list):
                 return
             break_bi = bi_list[bsp1_bi.idx + 1]
@@ -164,12 +225,11 @@ class CBSPointList(Generic[LINE_TYPE, LINE_LIST_TYPE]):
         else:
             BSP_CONF = self.config.GetBSConfig(seg.is_up())
             bsp1_bi, real_bsp1 = None, None
-            bsp1_bi_idx = -1
             if len(bi_list) == 1:
                 return
             bsp2_bi = bi_list[1]
             break_bi = bi_list[0]
-        if BSP_CONF.bsp2_follow_1 and bsp1_bi_idx not in [bsp.bi.idx for bsp in self.bsp_dict.values()]:  # check bsp2_follow_1
+        if BSP_CONF.bsp2_follow_1 and (not bsp1_bi or bsp1_bi.idx not in self.bsp_store_flat_dict):
             return
         retrace_rate = bsp2_bi.amp()/break_bi.amp()
         bsp2_flag = retrace_rate <= BSP_CONF.max_bs2_rate
@@ -217,8 +277,7 @@ class CBSPointList(Generic[LINE_TYPE, LINE_LIST_TYPE]):
             bias += 2
 
     def cal_seg_bs3point(self, seg_list: CSegListComm[LINE_TYPE], bi_list: LINE_LIST_TYPE):
-        bsp1_bi_idx_dict = {bsp.bi.idx: bsp for bsp in self.bsp1_lst}
-        for seg in seg_list:
+        for seg in seg_list[self.last_sure_seg_idx:]:
             if not self.seg_need_cal(seg):
                 continue
             config = self.config.GetBSConfig(seg.is_down())
@@ -228,7 +287,7 @@ class CBSPointList(Generic[LINE_TYPE, LINE_LIST_TYPE]):
                 bsp1_bi = seg.end_bi
                 bsp1_bi_idx = bsp1_bi.idx
                 BSP_CONF = self.config.GetBSConfig(seg.is_down())
-                real_bsp1 = bsp1_bi_idx_dict.get(bsp1_bi.idx)
+                real_bsp1 = self.bsp1_dict.get(bsp1_bi.idx)
                 next_seg_idx = seg.idx+1
                 next_seg = seg.next  # 可能为None, 所以并不一定可以保证next_seg_idx == next_seg.idx
             else:
@@ -237,7 +296,7 @@ class CBSPointList(Generic[LINE_TYPE, LINE_LIST_TYPE]):
                 bsp1_bi, real_bsp1 = None, None
                 bsp1_bi_idx = -1
                 BSP_CONF = self.config.GetBSConfig(seg.is_up())
-            if BSP_CONF.bsp3_follow_1 and bsp1_bi_idx not in [bsp.bi.idx for bsp in self.bsp_dict.values()]:
+            if BSP_CONF.bsp3_follow_1 and (not bsp1_bi or bsp1_bi.idx not in self.bsp_store_flat_dict):
                 continue
             if next_seg:
                 self.treat_bsp3_after(seg_list, next_seg, BSP_CONF, bi_list, real_bsp1, bsp1_bi_idx, next_seg_idx)
@@ -308,10 +367,16 @@ class CBSPointList(Generic[LINE_TYPE, LINE_LIST_TYPE]):
             self.add_bs(bs_type=BSP_TYPE.T3B, bi=bsp3_bi, relate_bsp1=real_bsp1)  # type: ignore
             break
 
-    def getLastestBspList(self) -> List[CBS_Point[LINE_TYPE]]:
-        if len(self.lst) == 0:
-            return []
-        return sorted(self.lst, key=lambda bsp: bsp.bi.idx, reverse=True)
+    def getSortedBspList(self) -> List[CBS_Point[LINE_TYPE]]:
+        return sorted(self.bsp_iter(), key=lambda bsp: bsp.bi.idx)
+
+    def get_latest_bsp(self, number: int) -> List[CBS_Point[LINE_TYPE]]:
+        res = []
+        for bsp in self.bsp_iter_v2():
+            res.append(bsp)
+            if number != 0 and len(res) >= number:
+                break
+        return res
 
 
 def bsp2s_break_bsp1(bsp2s_bi: LINE_TYPE, bsp2_break_bi: LINE_TYPE) -> bool:
