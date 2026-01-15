@@ -7,8 +7,8 @@ from Common.CEnum import AUTYPE, DATA_SRC, KL_TYPE
 from Plot.PyEchartsPlotDriver import CPyEchartsPlotDriver
 
 if __name__ == "__main__":
-    code = "sz.000001"
-    begin_time = "2024-01-01"
+    code = "sh.000001"
+    begin_time = "2023-12-01"
     end_time = None
     data_src = DATA_SRC.BAO_STOCK
     

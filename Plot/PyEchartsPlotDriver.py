@@ -404,6 +404,7 @@ class CPyEchartsPlotDriver:
                         symbol_size=4,  # 笔的端点大小
                         is_symbol_show=True,
                         z_level=1,  # 确保笔在K线上方
+                        tooltip_opts=opts.TooltipOpts(is_show=False),  # 禁用笔的tooltip
                     )
         
         # 添加线段（使用级别对应的颜色）
@@ -429,33 +430,107 @@ class CPyEchartsPlotDriver:
                         symbol_size=5,  # 线段端点更大
                         is_symbol_show=True,
                         z_level=2,  # 确保线段在笔的上方
+                        tooltip_opts=opts.TooltipOpts(is_show=False),  # 禁用线段的tooltip
                     )
         
         # 合并图表
         kline_chart.overlap(line_chart)
         
-        # 添加中枢（使用MarkArea，填充透明，只显示边框）
-        mark_area_data = []
+        # 添加中枢（使用Line图绘制矩形边框，不填充）
         if meta.zs_lst:
+            zs_border_chart = Line()
+            zs_border_chart.add_xaxis(dates)
+            
             for zs in meta.zs_lst:
                 if zs.begin < len(dates) and zs.end < len(dates):
-                    # 使用MarkArea标记中枢范围（矩形区域）
-                    mark_area_data.append([
-                        {"xAxis": dates[zs.begin], "yAxis": zs.low},
-                        {"xAxis": dates[zs.end], "yAxis": zs.high}
-                    ])
-        
-        # 设置中枢标记（填充透明）
-        if mark_area_data:
-            kline_chart.set_series_opts(
-                markarea_opts=opts.MarkAreaOpts(
-                    data=mark_area_data,
-                    itemstyle_opts=opts.ItemStyleOpts(
-                        color=level_colors['zs'],  # 使用级别对应的中枢颜色
-                        opacity=0  # 填充完全透明，不显示填充
+                    zs_color = level_colors['zs']
+                    
+                    # 绘制矩形的四条边
+                    # 上边（水平线）
+                    top_data = [None] * len(dates)
+                    top_data[zs.begin] = zs.high
+                    top_data[zs.end] = zs.high
+                    zs_border_chart.add_yaxis(
+                        "",
+                        top_data,
+                        is_connect_nones=True,
+                        linestyle_opts=opts.LineStyleOpts(
+                            color=zs_color,
+                            width=2,
+                            type_="solid"
+                        ),
+                        label_opts=opts.LabelOpts(is_show=False),
+                        symbol="none",
+                        tooltip_opts=opts.TooltipOpts(is_show=False),  # 禁用tooltip
                     )
-                )
-            )
+                    
+                    # 下边（水平线）
+                    bottom_data = [None] * len(dates)
+                    bottom_data[zs.begin] = zs.low
+                    bottom_data[zs.end] = zs.low
+                    zs_border_chart.add_yaxis(
+                        "",
+                        bottom_data,
+                        is_connect_nones=True,
+                        linestyle_opts=opts.LineStyleOpts(
+                            color=zs_color,
+                            width=2,
+                            type_="solid"
+                        ),
+                        label_opts=opts.LabelOpts(is_show=False),
+                        symbol="none",
+                        tooltip_opts=opts.TooltipOpts(is_show=False),  # 禁用tooltip
+                    )
+                    
+                    # 左边（垂直线）- 使用两个非常接近的点来绘制垂直线
+                    # 由于Line图限制，我们在begin位置使用low，在begin+1位置使用high
+                    left_data = [None] * len(dates)
+                    if zs.begin < len(dates):
+                        left_data[zs.begin] = zs.low
+                        # 使用下一个点来绘制垂直线
+                        next_idx = min(zs.begin + 1, len(dates) - 1)
+                        if next_idx != zs.begin:
+                            left_data[next_idx] = zs.high
+                    
+                    zs_border_chart.add_yaxis(
+                        "",
+                        left_data,
+                        is_connect_nones=True,
+                        linestyle_opts=opts.LineStyleOpts(
+                            color=zs_color,
+                            width=2,
+                            type_="solid"
+                        ),
+                        label_opts=opts.LabelOpts(is_show=False),
+                        symbol="none",
+                        tooltip_opts=opts.TooltipOpts(is_show=False),  # 禁用tooltip
+                    )
+                    
+                    # 右边（垂直线）
+                    right_data = [None] * len(dates)
+                    if zs.end < len(dates):
+                        right_data[zs.end] = zs.low
+                        # 使用下一个点来绘制垂直线
+                        next_idx = min(zs.end + 1, len(dates) - 1)
+                        if next_idx != zs.end:
+                            right_data[next_idx] = zs.high
+                    
+                    zs_border_chart.add_yaxis(
+                        "",
+                        right_data,
+                        is_connect_nones=True,
+                        linestyle_opts=opts.LineStyleOpts(
+                            color=zs_color,
+                            width=2,
+                            type_="solid"
+                        ),
+                        label_opts=opts.LabelOpts(is_show=False),
+                        symbol="none",
+                        tooltip_opts=opts.TooltipOpts(is_show=False),  # 禁用tooltip
+                    )
+            
+            # 合并中枢边框图表
+            kline_chart.overlap(zs_border_chart)
         
         kline_chart.set_global_opts(
             title_opts=opts.TitleOpts(
@@ -487,7 +562,25 @@ class CPyEchartsPlotDriver:
             ],
             tooltip_opts=opts.TooltipOpts(
                 trigger="axis",
-                axis_pointer_type="cross"
+                axis_pointer_type="cross",
+                # 只显示K线的tooltip，过滤掉笔、线段、中枢的tooltip
+                formatter=JsCode("""
+                    function(params) {
+                        // 只显示K线数据的tooltip
+                        var result = params[0].name + '<br/>';
+                        for (var i = 0; i < params.length; i++) {
+                            if (params[i].seriesName === 'K线' && params[i].value) {
+                                var data = params[i].value;
+                                result += '开盘: ' + data[0] + '<br/>';
+                                result += '收盘: ' + data[1] + '<br/>';
+                                result += '最低: ' + data[2] + '<br/>';
+                                result += '最高: ' + data[3] + '<br/>';
+                                break;
+                            }
+                        }
+                        return result;
+                    }
+                """)
             ),
             legend_opts=opts.LegendOpts(
                 is_show=False,  # 不显示图例，避免显示"笔x"标签
