@@ -179,6 +179,9 @@ class CChan:
         elif self.data_src == DATA_SRC.CSV:
             from DataAPI.csvAPI import CSV_API
             _dict[DATA_SRC.CSV] = CSV_API
+        elif self.data_src == DATA_SRC.AKSHARE:
+            from DataAPI.AkshareAPI import CAkshare
+            _dict[DATA_SRC.AKSHARE] = CAkshare
         if self.data_src in _dict:
             return _dict[self.data_src]
         assert isinstance(self.data_src, str)
@@ -332,17 +335,23 @@ class CChan:
             pickle.dump(self, f)
 
         sys.setrecursionlimit(_pre_limit)
+        self.chan_pickle_restore()
 
     @staticmethod
     def chan_load_pickle(file_path) -> 'CChan':
         with open(file_path, "rb") as f:
             chan = pickle.load(f)
-        last_klu = None
-        last_klc = None
-        last_bi = None
-        last_seg = None
-        last_segseg = None
-        for kl_list in chan.kl_datas.values():
+        chan.chan_pickle_restore()
+
+        return chan
+
+    def chan_pickle_restore(self):
+        for kl_list in self.kl_datas.values():
+            last_klu = None
+            last_klc = None
+            last_bi = None
+            last_seg = None
+            last_segseg = None
             for klc in kl_list.lst:
                 for klu in klc.lst:
                     klu.pre = last_klu
@@ -368,5 +377,3 @@ class CChan:
                 if last_segseg:
                     last_segseg.next = segseg
                 last_segseg = segseg
-
-        return chan
