@@ -371,6 +371,9 @@ class CPyEchartsPlotDriver:
                     border_color="#8A0000",
                     border_color0="#008F28",
                 ),
+                tooltip_opts=opts.TooltipOpts(
+                    is_show=True,  # K线显示tooltip
+                ),
             )
         )
         
@@ -563,22 +566,29 @@ class CPyEchartsPlotDriver:
             tooltip_opts=opts.TooltipOpts(
                 trigger="axis",
                 axis_pointer_type="cross",
-                # 只显示K线的tooltip，过滤掉笔、线段、中枢的tooltip
+                # 使用formatter过滤掉笔、线段、中枢的tooltip，只显示K线
                 formatter=JsCode("""
                     function(params) {
-                        // 只显示K线数据的tooltip
-                        var result = params[0].name + '<br/>';
+                        if (!params || !Array.isArray(params) || params.length === 0) {
+                            return '';
+                        }
+                        // 查找K线数据
                         for (var i = 0; i < params.length; i++) {
-                            if (params[i].seriesName === 'K线' && params[i].value) {
-                                var data = params[i].value;
-                                result += '开盘: ' + data[0] + '<br/>';
-                                result += '收盘: ' + data[1] + '<br/>';
-                                result += '最低: ' + data[2] + '<br/>';
-                                result += '最高: ' + data[3] + '<br/>';
-                                break;
+                            var param = params[i];
+                            if (param && param.seriesName === 'K线' && param.value) {
+                                var data = param.value;
+                                if (Array.isArray(data) && data.length >= 4) {
+                                    var result = param.name + '<br/>';
+                                    result += '开盘: ' + parseFloat(data[0]).toFixed(2) + '<br/>';
+                                    result += '收盘: ' + parseFloat(data[1]).toFixed(2) + '<br/>';
+                                    result += '最低: ' + parseFloat(data[2]).toFixed(2) + '<br/>';
+                                    result += '最高: ' + parseFloat(data[3]).toFixed(2);
+                                    return result;
+                                }
                             }
                         }
-                        return result;
+                        // 如果没有找到K线数据，返回空字符串（不显示tooltip）
+                        return '';
                     }
                 """)
             ),
