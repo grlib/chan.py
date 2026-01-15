@@ -8,6 +8,7 @@ from pyecharts import options as opts
 from pyecharts.charts import Graph, Kline, Line, Scatter
 from pyecharts.commons.utils import JsCode
 from pyecharts.globals import ThemeType
+from pyecharts.options import GraphicItem, GraphicRect
 
 from Chan import CChan
 from Common.CEnum import KL_TYPE
@@ -433,7 +434,7 @@ class CPyEchartsPlotDriver:
         # 合并图表
         kline_chart.overlap(line_chart)
         
-        # 添加中枢（使用MarkArea标记矩形区域，使用级别对应的颜色）
+        # 添加中枢（使用MarkArea，填充透明，只显示边框）
         mark_area_data = []
         if meta.zs_lst:
             for zs in meta.zs_lst:
@@ -444,14 +445,14 @@ class CPyEchartsPlotDriver:
                         {"xAxis": dates[zs.end], "yAxis": zs.high}
                     ])
         
-        # 设置中枢标记（使用级别对应的中枢颜色）
+        # 设置中枢标记（填充透明）
         if mark_area_data:
             kline_chart.set_series_opts(
                 markarea_opts=opts.MarkAreaOpts(
                     data=mark_area_data,
                     itemstyle_opts=opts.ItemStyleOpts(
                         color=level_colors['zs'],  # 使用级别对应的中枢颜色
-                        opacity=0.25  # 稍微提高透明度，让中枢更清晰
+                        opacity=0  # 填充完全透明，不显示填充
                     )
                 )
             )
