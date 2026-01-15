@@ -6,7 +6,7 @@ from Plot.PlotDriver import CPlotDriver
 
 if __name__ == "__main__":
     code = "sz.000001"
-    begin_time = "2018-01-01"
+    begin_time = "2023-01-01"
     end_time = None
     data_src = DATA_SRC.BAO_STOCK
     lv_list = [KL_TYPE.K_DAY]
@@ -53,7 +53,7 @@ if __name__ == "__main__":
             # "disp_end": True,
         },
         "figure": {
-            "x_range": 200,
+            "x_range": 2000,
         },
         "marker": {
             # "markers": {  # text, position, color
