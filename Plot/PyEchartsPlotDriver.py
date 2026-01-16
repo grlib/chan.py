@@ -5,7 +5,7 @@
 from typing import Dict, List, Optional, Union
 
 from pyecharts import options as opts
-from pyecharts.charts import Graph, Kline, Line, Scatter
+from pyecharts.charts import Bar, Graph, Grid, Kline, Line, Scatter
 from pyecharts.commons.utils import JsCode
 from pyecharts.globals import ThemeType
 from pyecharts.options import GraphicItem, GraphicRect
@@ -535,6 +535,27 @@ class CPyEchartsPlotDriver:
             # 合并中枢边框图表
             kline_chart.overlap(zs_border_chart)
         
+        # 准备MACD数据
+        macd_data = []
+        dif_data = []
+        dea_data = []
+        has_macd = False
+        
+        for klu in meta.klu_iter():
+            if hasattr(klu, 'macd') and klu.macd is not None:
+                has_macd = True
+                macd_data.append(klu.macd.macd)
+                dif_data.append(klu.macd.DIF)
+                dea_data.append(klu.macd.DEA)
+            else:
+                macd_data.append(None)
+                dif_data.append(None)
+                dea_data.append(None)
+        
+        # 创建Grid布局
+        grid_chart = Grid(init_opts=opts.InitOpts(width="1400px", height="800px"))
+        
+        # 设置K线图位置（上方）
         kline_chart.set_global_opts(
             title_opts=opts.TitleOpts(
                 title=f"{self.chan.code} {level_name} 缠论分析",
@@ -566,39 +587,114 @@ class CPyEchartsPlotDriver:
             tooltip_opts=opts.TooltipOpts(
                 trigger="axis",
                 axis_pointer_type="cross",
-                # 使用formatter过滤掉笔、线段、中枢的tooltip，只显示K线
-                formatter=JsCode("""
-                    function(params) {
-                        if (!params || !Array.isArray(params) || params.length === 0) {
-                            return '';
-                        }
-                        // 查找K线数据
-                        for (var i = 0; i < params.length; i++) {
-                            var param = params[i];
-                            if (param && param.seriesName === 'K线' && param.value) {
-                                var data = param.value;
-                                if (Array.isArray(data) && data.length >= 4) {
-                                    var result = param.name + '<br/>';
-                                    result += '开盘: ' + parseFloat(data[0]).toFixed(2) + '<br/>';
-                                    result += '收盘: ' + parseFloat(data[1]).toFixed(2) + '<br/>';
-                                    result += '最低: ' + parseFloat(data[2]).toFixed(2) + '<br/>';
-                                    result += '最高: ' + parseFloat(data[3]).toFixed(2);
-                                    return result;
-                                }
-                            }
-                        }
-                        // 如果没有找到K线数据，返回空字符串（不显示tooltip）
-                        return '';
-                    }
-                """)
             ),
             legend_opts=opts.LegendOpts(
                 is_show=False,  # 不显示图例，避免显示"笔x"标签
             ),
         )
         
-        kline_chart.render(output_path)
-        return kline_chart
+        # 将K线图添加到Grid
+        grid_chart.add(
+            kline_chart,
+            grid_opts=opts.GridOpts(
+                pos_left="3%",
+                pos_right="1%",
+                pos_top="10%",
+                height="60%"  # K线图占60%高度
+            ),
+        )
+        
+        # 如果有MACD数据，添加MACD子图
+        if has_macd:
+            # 创建MACD图表
+            macd_chart = Bar()
+            macd_chart.add_xaxis(dates)
+            
+            # 添加MACD柱状图（红色/绿色）
+            macd_bar_data = []
+            for macd_val in macd_data:
+                if macd_val is not None:
+                    macd_bar_data.append(macd_val)
+                else:
+                    macd_bar_data.append(0)
+            
+            macd_chart.add_yaxis(
+                "MACD",
+                macd_bar_data,
+                itemstyle_opts=opts.ItemStyleOpts(
+                    color=JsCode("""
+                        function(params) {
+                            var value = params.value;
+                            return value >= 0 ? '#ec0000' : '#00da3c';
+                        }
+                    """)
+                ),
+                label_opts=opts.LabelOpts(is_show=False),  # 不显示标签
+                tooltip_opts=opts.TooltipOpts(is_show=False),
+            )
+            
+            # 添加DIF和DEA线
+            macd_line_chart = Line()
+            macd_line_chart.add_xaxis(dates)
+            macd_line_chart.add_yaxis(
+                "DIF",
+                dif_data,
+                linestyle_opts=opts.LineStyleOpts(color="#FFA500", width=2),
+                label_opts=opts.LabelOpts(is_show=False),
+                tooltip_opts=opts.TooltipOpts(is_show=False),
+            )
+            macd_line_chart.add_yaxis(
+                "DEA",
+                dea_data,
+                linestyle_opts=opts.LineStyleOpts(color="#0000ff", width=2),
+                label_opts=opts.LabelOpts(is_show=False),
+                tooltip_opts=opts.TooltipOpts(is_show=False),
+            )
+            
+            # 合并MACD图表
+            macd_chart.overlap(macd_line_chart)
+            
+            # 设置MACD图表选项
+            macd_chart.set_global_opts(
+                xaxis_opts=opts.AxisOpts(
+                    is_scale=True,
+                    grid_index=1,
+                    axislabel_opts=opts.LabelOpts(is_show=False),  # 不显示x轴标签，与K线图共用
+                ),
+                yaxis_opts=opts.AxisOpts(
+                    is_scale=True,
+                    grid_index=1,
+                ),
+                datazoom_opts=[
+                    opts.DataZoomOpts(
+                        is_show=True,
+                        type_="inside",
+                        xaxis_index=[1],
+                        range_start=0,
+                        range_end=100,
+                    ),
+                ],
+                tooltip_opts=opts.TooltipOpts(
+                    trigger="axis",
+                    axis_pointer_type="cross",
+                ),
+                legend_opts=opts.LegendOpts(is_show=False),
+            )
+            
+            # 将MACD图添加到Grid（下方）
+            grid_chart.add(
+                macd_chart,
+                grid_opts=opts.GridOpts(
+                    pos_left="3%",
+                    pos_right="1%",
+                    pos_top="72%",
+                    height="25%"  # MACD图占25%高度
+                ),
+            )
+        
+        # 渲染图表
+        grid_chart.render(output_path)
+        return grid_chart if has_macd else kline_chart
     
     def plot_all_levels(self, output_dir: str = "./"):
         """
