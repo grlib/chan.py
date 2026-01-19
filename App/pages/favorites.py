@@ -50,6 +50,9 @@ def get_chan_config() -> CChanConfig:
 
 def analyze_stock(code: str, begin_time: str, end_time: str = None, kl_type: KL_TYPE = KL_TYPE.K_DAY) -> CChan:
     """Analyze a single stock"""
+    # Convert code to string if it's not already
+    code = str(code)
+    
     if end_time is None or end_time == "":
         end_time = datetime.now().strftime("%Y-%m-%d")
     
@@ -163,8 +166,8 @@ else:
     # If there's a selected row, display chart on main page (not in dialog)
     if selected_index is not None and selected_index < len(favorites):
         selected_row = favorites.iloc[selected_index]
-        selected_code = selected_row['code']
-        selected_name = selected_row['name']
+        selected_code = str(selected_row['code'])  # Ensure it's a string
+        selected_name = str(selected_row['name'])  # Ensure it's a string
         
         st.markdown("---")
         st.subheader(f"📈 {selected_code} {selected_name} - Chan Theory Analysis")
