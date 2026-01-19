@@ -10,7 +10,7 @@ st.set_page_config(
 # 定义页面
 pages = [
     st.Page("pages/favorites.py", title="Favorites", icon="⭐"),
-    st.Page("stock_scanner.py", title="Stock Scanner", icon="📈"),
+    st.Page("pages/stock_scanner.py", title="Stock Scanner", icon="📈"),
     # 可以在这里添加更多页面
     # st.Page("pages/other_page.py", title="Other Page", icon="📊"),
 ]
