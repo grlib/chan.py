@@ -395,7 +395,7 @@ def analyze_stock(code: str, config: CChanConfig, begin_time: str, end_time: str
             code=code,
             begin_time=begin_time,
             end_time=end_time,
-            data_src=DATA_SRC.BAO_STOCK,
+            data_src='custom:QMTAPI.CQMTAPI',
             lv_list=[kl_type],
             config=config,
             autype=AUTYPE.QFQ,

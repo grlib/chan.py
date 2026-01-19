@@ -59,6 +59,12 @@ def parse_time_column(inp):
             day = int(inp[6:8])
             hour = int(inp[8:10])
             minute = int(inp[10:12])
+        elif len(inp) == 14:  # YYYYMMDDHHMMSS
+            year = int(inp[:4])
+            month = int(inp[4:6])
+            day = int(inp[6:8])
+            hour = int(inp[8:10])
+            minute = int(inp[10:12])
         elif len(inp) == 17:  # YYYYMMDDHHMMSSmmm 或类似
             year = int(inp[:4])
             month = int(inp[4:6])
