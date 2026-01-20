@@ -174,12 +174,8 @@ else:
         
         # Level options
         kl_level_options = {
-            "1 Minute": KL_TYPE.K_1M,
-            "3 Minutes": KL_TYPE.K_3M,
             "5 Minutes": KL_TYPE.K_5M,
-            "15 Minutes": KL_TYPE.K_15M,
             "30 Minutes": KL_TYPE.K_30M,
-            "60 Minutes": KL_TYPE.K_60M,
             "Daily": KL_TYPE.K_DAY,
             "Weekly": KL_TYPE.K_WEEK,
             "Monthly": KL_TYPE.K_MON,
