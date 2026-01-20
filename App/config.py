@@ -57,17 +57,20 @@ def save_config(config: dict):
 
 def get_data_source() -> str:
     """
-    获取当前配置的数据源
+    获取当前配置的数据源（字符串格式，用于配置文件存储）
     
     Returns:
-        str: 数据源字符串，可以是'BAO_STOCK'或'custom:QMTAPI.CQMTAPI'等
+        str: 数据源字符串，'BAO_STOCK'或'custom:QMTAPI.CQMTAPI'等
     """
     # 优先从session_state获取（用于Streamlit应用）
     if hasattr(st, 'session_state') and 'app_data_source' in st.session_state:
         data_source = st.session_state.app_data_source
         # 如果是DATA_SRC枚举，转换为字符串
         if isinstance(data_source, DATA_SRC):
-            return "BAO_STOCK"  # 目前只支持BAO_STOCK作为枚举
+            if data_source == DATA_SRC.BAO_STOCK:
+                return "BAO_STOCK"
+            else:
+                return str(data_source)
         return str(data_source)
     
     # 从配置文件获取
@@ -76,7 +79,10 @@ def get_data_source() -> str:
     
     # 确保返回的是字符串格式
     if isinstance(data_source, DATA_SRC):
-        return "BAO_STOCK"
+        if data_source == DATA_SRC.BAO_STOCK:
+            return "BAO_STOCK"
+        else:
+            return str(data_source)
     
     return str(data_source)
 
@@ -92,17 +98,21 @@ def set_data_source(data_source: str):
     
     if data_source == "QMTAPI":
         config["data_source"] = "custom:QMTAPI.CQMTAPI"
+        data_source_value = "custom:QMTAPI.CQMTAPI"
     elif data_source == "BAO_STOCK":
         config["data_source"] = "BAO_STOCK"
+        data_source_value = DATA_SRC.BAO_STOCK  # session_state存储枚举
     else:
         # 允许直接设置自定义格式
         config["data_source"] = data_source
+        data_source_value = data_source
     
     save_config(config)
     
     # 同时更新session_state（如果可用）
+    # BAO_STOCK存储为枚举，QMTAPI存储为字符串
     if hasattr(st, 'session_state'):
-        st.session_state.app_data_source = config["data_source"]
+        st.session_state.app_data_source = data_source_value
 
 
 def get_data_source_for_chan():
@@ -110,17 +120,28 @@ def get_data_source_for_chan():
     获取用于CChan初始化的数据源
     
     Returns:
-        可以直接用于CChan的data_src参数的值（DATA_SRC枚举或字符串）
+        可以直接用于CChan的data_src参数的值
+        - BAO_STOCK: 返回 DATA_SRC.BAO_STOCK 枚举
+        - QMTAPI: 返回字符串 'custom:QMTAPI.CQMTAPI'
     """
+    # 优先从session_state获取（可能已经是枚举类型）
+    if hasattr(st, 'session_state') and 'app_data_source' in st.session_state:
+        data_source = st.session_state.app_data_source
+        # 如果已经是枚举类型，直接返回
+        if isinstance(data_source, DATA_SRC):
+            return data_source
+        # 如果是字符串，继续处理
+        if isinstance(data_source, str):
+            if data_source == "BAO_STOCK":
+                return DATA_SRC.BAO_STOCK
+            return data_source
+    
+    # 从配置文件获取（配置文件存储的是字符串）
     data_source = get_data_source()
     
     # 如果是BAO_STOCK字符串，返回DATA_SRC枚举
-    if data_source == "BAO_STOCK" or str(data_source) == "BAO_STOCK":
+    if data_source == "BAO_STOCK":
         return DATA_SRC.BAO_STOCK
-    
-    # 如果是DATA_SRC枚举，直接返回
-    if isinstance(data_source, DATA_SRC):
-        return data_source
     
     # 如果是QMTAPI或其他自定义格式，直接返回字符串
     return data_source
