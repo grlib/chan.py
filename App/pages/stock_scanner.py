@@ -40,6 +40,7 @@ from Chan import CChan
 from ChanConfig import CChanConfig
 from Common.CEnum import AUTYPE, DATA_SRC, KL_TYPE
 from Plot.PyEchartsPlotDriver import CPyEchartsPlotDriver
+from App.config import get_data_source_for_chan
 
 
 # Cache configuration
@@ -391,11 +392,12 @@ def analyze_stock(code: str, config: CChanConfig, begin_time: str, end_time: str
             else:
                 code = f"sz.{code}"
 
+        data_src = get_data_source_for_chan()
         chan = CChan(
             code=code,
             begin_time=begin_time,
             end_time=end_time,
-            data_src='custom:QMTAPI.CQMTAPI',
+            data_src=data_src,
             lv_list=[kl_type],
             config=config,
             autype=AUTYPE.QFQ,
@@ -451,11 +453,12 @@ def scan_stocks(stock_list: pd.DataFrame, config: CChanConfig, begin_time: str, 
             else:
                 full_code = code
             
+            data_src = get_data_source_for_chan()
             chan = CChan(
                 code=full_code,
                 begin_time=begin_time,
                 end_time=end_time,
-                data_src=DATA_SRC.BAO_STOCK,
+                data_src=data_src,
                 lv_list=[kl_type],
                 config=config,
                 autype=AUTYPE.QFQ,

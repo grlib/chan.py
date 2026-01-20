@@ -12,6 +12,7 @@ pages = [
     st.Page("pages/favorites.py", title="Favorites", icon="⭐"),
     st.Page("pages/stock_scanner.py", title="Stock Scanner", icon="📈"),
     st.Page("pages/chan_analysis_prompt.py", title="Chan Analysis Prompt", icon="📊"),
+    st.Page("pages/settings.py", title="Settings", icon="⚙️"),
     # 可以在这里添加更多页面
     # st.Page("pages/other_page.py", title="Other Page", icon="📊"),
 ]

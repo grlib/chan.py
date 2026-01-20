@@ -12,6 +12,7 @@ from Chan import CChan
 from ChanConfig import CChanConfig
 from Common.CEnum import AUTYPE, DATA_SRC, KL_TYPE
 from Plot.PyEchartsPlotDriver import CPyEchartsPlotDriver
+from App.config import get_data_source_for_chan
 
 # Data directory and file paths
 DATA_DIR = "../data"  # Relative to App directory
@@ -65,11 +66,12 @@ def analyze_stock(code: str, begin_time: str, end_time: str = None, kl_type: KL_
             code = f"sz.{code}"
     
     config = get_chan_config()
+    data_src = get_data_source_for_chan()
     chan = CChan(
         code=code,
         begin_time=begin_time,
         end_time=end_time,
-        data_src=DATA_SRC.BAO_STOCK,
+        data_src=data_src,
         lv_list=[kl_type],
         config=config,
         autype=AUTYPE.QFQ,

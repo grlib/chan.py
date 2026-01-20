@@ -25,6 +25,7 @@ import pandas as pd
 from Chan import CChan
 from ChanConfig import CChanConfig
 from Common.CEnum import AUTYPE, KL_TYPE, DATA_SRC, BI_DIR
+from App.config import get_data_source_for_chan
 
 
 def get_chan_config() -> CChanConfig:
@@ -106,11 +107,12 @@ def analyze_multi_level(
             }
             level_name = level_name_map.get(kl_type, kl_type.name)
             with st.spinner(f"Analyzing {level_name}..."):
+                data_src = get_data_source_for_chan()
                 chan = CChan(
                     code=code_formatted,
                     begin_time=begin_time,
                     end_time=end_time,
-                    data_src=DATA_SRC.BAO_STOCK,
+                    data_src=data_src,
                     lv_list=[kl_type],
                     config=config,
                     autype=AUTYPE.QFQ,
